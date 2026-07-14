@@ -7,7 +7,7 @@ on:
     branches: [main, master, develop]
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 21 * * 0' # Sunday 9 PM UTC = Monday 12 AM EAT
 
 # Permissions for deployment
 permissions:
