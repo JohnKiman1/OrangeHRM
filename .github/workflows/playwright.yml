@@ -77,17 +77,36 @@ jobs:
     if: always()
     
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      
+      - name: Install pnpm
+        run: |
+          npm install -g pnpm@9
+          echo "$(npm prefix -g)/bin" >> $GITHUB_PATH
+      
+      - name: Verify pnpm installation
+        run: pnpm --version
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Install Allure CLI (via npm)
+        run: |
+          npm install -g allure-commandline
+          allure --version
+      
       - name: Download all Allure results
         uses: actions/download-artifact@v4
         with:
           pattern: allure-results-*
           path: allure-results
           merge-multiple: true
-      
-      - name: Install Allure CLI (via npm)
-        run: |
-          npm install -g allure-commandline
-          allure --version
       
       - name: Generate Allure Report
         run: |
