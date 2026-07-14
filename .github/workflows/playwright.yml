@@ -43,8 +43,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+      - name: Install ALL Playwright browsers
+        run: pnpm exec playwright install --with-deps
       
       - name: Install Allure CLI (via npm)
         run: |
