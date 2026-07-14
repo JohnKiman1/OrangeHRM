@@ -1,0 +1,94 @@
+# Dependency directories
+node_modules/
+.pnpm-store/
+
+# Test results and reports
+test-results/
+playwright-report/
+report/
+allure-results/
+allure-report/
+
+# Playwright output
+playwright/.cache/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Storage state files (auth)
+storage/
+*.json
+!package.json
+!tsconfig.json
+!playwright.config.ts
+!package-lock.json
+!pnpm-lock.yaml
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.workspace
+*.iml
+.project
+.classpath
+.settings/
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Secrets and sensitive data
+*.pem
+*.key
+*.crt
+*.p12
+.secrets/
+credentials/
+*.secret
+
+# GitHub Actions
+.github/actions/*/node_modules/
+
+# Allure history (for local runs, but keep for CI)
+!allure-results/history/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Debug files
+*.pid
+*.seed
+*.pid.lock

@@ -1,0 +1,31 @@
+{
+  "name": "OrangeHRM",
+  "version": "1.0.0",
+  "description": "Enterprise-grade Playwright automation framework for OrangeHRM Demo",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "smoke": "playwright test --grep @smoke",
+    "regression": "playwright test --grep @regression",
+    "sanity": "playwright test --grep @sanity",
+    "report": "playwright show-report report/playwright-report",
+    "allure:generate": "allure generate allure-results -o report/allure-report --clean",
+    "allure:open": "allure open report/allure-report",
+    "allure:serve": "allure serve allure-results",
+    "allure": "pnpm allure:generate && pnpm allure:open",
+    "allure:check": "allure --version",
+    "clean": "rm -rf test-results report/playwright-report report/allure-report allure-results",
+    "auth": "playwright test tests/playwright/tests/authentication/auth.setup.spec.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.1",
+    "allure-playwright": "^3.10.2"
+  }
+}
