@@ -231,19 +231,30 @@ jobs:
       - name: Prepare deployment for K6 report
         run: |
           # Create a directory for the K6 report
-          mkdir -p _site
+          mkdir -p _site/k6
           
-          # Copy the K6 report to the root
-          cp -r report/k6-report/* _site/
+          # Copy the K6 report to the k6 subdirectory
+          cp -r report/k6-report/* _site/k6/
           
-          # Ensure index.html exists
-          if [ ! -f "_site/index.html" ]; then
-            echo "<html><body><h1>K6 Performance Report</h1></body></html>" > _site/index.html
-          fi
+          # Create a root index.html that redirects to /k6/
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta http-equiv="refresh" content="0; url=/OrangeHRM/k6/">
+            <title>K6 Performance Report</title>
+          </head>
+          <body>
+            <p>Redirecting to <a href="/OrangeHRM/k6/">K6 Performance Report</a>...</p>
+          </body>
+          </html>
+          EOF
           
-          echo "✅ K6 report prepared for deployment"
+          echo "✅ K6 report prepared for deployment at /k6/"
           echo "📁 Contents of _site:"
           ls -la _site/
+          echo "📁 Contents of _site/k6:"
+          ls -la _site/k6/
       
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -271,7 +282,7 @@ jobs:
       - name: Get Report URL
         run: |
           REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
-          REPORT_URL="https://${{ github.repository_owner }}.github.io/$REPO_NAME/"
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/$REPO_NAME/k6/"
           echo "REPORT_URL=$REPORT_URL" >> $GITHUB_ENV
       
       - name: Comment on PR
