@@ -17,8 +17,15 @@
     "allure:serve": "allure serve allure-results",
     "allure": "pnpm allure:generate && pnpm allure:open",
     "allure:check": "allure --version",
-    "clean": "rm -rf test-results report/playwright-report report/allure-report allure-results",
-    "auth": "playwright test tests/playwright/tests/authentication/auth.setup.spec.ts"
+    "clean": "rm -rf test-results report/playwright-report report/allure-report allure-results report/k6-report report/k6-summary report/artifacts",
+    "auth": "playwright test tests/playwright/tests/authentication/auth.setup.spec.ts",
+    "k6:smoke": "K6_ENV=develop k6 run tests/k6/scripts/smoke.js --summary-export=report/k6-summary/summary.json --out json=report/k6-summary/metrics.json",
+    "k6:load": "K6_ENV=develop k6 run tests/k6/scripts/load.js --summary-export=report/k6-summary/summary.json --out json=report/k6-summary/metrics.json",
+    "k6:stress": "K6_ENV=develop k6 run tests/k6/scripts/stress.js --summary-export=report/k6-summary/summary.json --out json=report/k6-summary/metrics.json",
+    "k6:soak": "K6_ENV=develop k6 run tests/k6/scripts/soak.js --summary-export=report/k6-summary/summary.json --out json=report/k6-summary/metrics.json",
+    "k6:benchmark": "pnpm run k6:load",
+    "k6:report": "cp tests/k6/reports/index.html report/k6-report/index.html && cp tests/k6/reports/index.html report/k6-summary/index.html",
+    "k6:summary": "cat report/k6-summary/summary.json"
   },
   "keywords": [],
   "author": "",

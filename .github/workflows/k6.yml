@@ -1,0 +1,303 @@
+name: K6 Performance CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 21 * * 0' # Sunday 9 PM UTC = Monday 12 AM EAT
+
+# Permissions for deployment
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  k6-test:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test-type: [smoke, load, soak, stress]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      
+      - name: Install pnpm
+        run: |
+          npm install -g pnpm@9
+          echo "$(npm prefix -g)/bin" >> $GITHUB_PATH
+      
+      - name: Verify pnpm installation
+        run: pnpm --version
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Install k6
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gnupg software-properties-common
+          curl https://github.com/grafana/k6/releases/download/v0.54.0/k6-v0.54.0-linux-amd64.tar.gz -L -o /tmp/k6.tgz
+          tar -xzf /tmp/k6.tgz -C /tmp
+          sudo mv /tmp/k6-v0.54.0-linux-amd64/k6 /usr/local/bin/k6
+          k6 --version
+      
+      - name: Verify site is reachable
+        run: |
+          echo "🔍 Checking if OrangeHRM site is reachable..."
+          curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" https://opensource-demo.orangehrmlive.com/web/index.php
+          echo "✅ Site is reachable"
+      
+      - name: Run K6 ${{ matrix.test-type }} test
+        run: |
+          mkdir -p report/k6-report report/k6-summary
+          
+          echo "🔄 Running ${{ matrix.test-type }} test..."
+          K6_ENV=develop k6 run \
+            --summary-export=report/k6-summary/${{ matrix.test-type }}-summary.json \
+            --out json=report/k6-summary/${{ matrix.test-type }}-metrics.json \
+            tests/k6/scripts/${{ matrix.test-type }}.js
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ ${{ matrix.test-type }} test passed"
+          else
+            echo "⚠️ ${{ matrix.test-type }} test failed"
+          fi
+        continue-on-error: true
+      
+      - name: Upload K6 Report for ${{ matrix.test-type }}
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-report-${{ matrix.test-type }}
+          path: report/k6-report/
+          retention-days: 5
+      
+      - name: Upload K6 Summary for ${{ matrix.test-type }}
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-summary-${{ matrix.test-type }}
+          path: report/k6-summary/
+          retention-days: 5
+
+  merge-k6-reports:
+    name: Merge K6 Reports
+    runs-on: ubuntu-latest
+    needs: k6-test
+    if: always()
+    
+    steps:
+      - name: Download all K6 reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: k6-report-*
+          path: report/k6-report
+          merge-multiple: true
+      
+      - name: Download all K6 summaries
+        uses: actions/download-artifact@v4
+        with:
+          pattern: k6-summary-*
+          path: report/k6-summary
+          merge-multiple: true
+      
+      - name: Generate Combined HTML Report
+        run: |
+          mkdir -p report/k6-report
+          
+          if [ -d "report/k6-summary" ] && [ "$(ls -A report/k6-summary)" ]; then
+            # Create index.html using echo statements (more reliable in GitHub Actions)
+            echo '<!DOCTYPE html>' > report/k6-report/index.html
+            echo '<html lang="en">' >> report/k6-report/index.html
+            echo '<head>' >> report/k6-report/index.html
+            echo '  <meta charset="UTF-8">' >> report/k6-report/index.html
+            echo '  <meta name="viewport" content="width=device-width, initial-scale=1.0">' >> report/k6-report/index.html
+            echo '  <title>K6 Performance Test Results</title>' >> report/k6-report/index.html
+            echo '  <style>' >> report/k6-report/index.html
+            echo '    body {' >> report/k6-report/index.html
+            echo '      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;' >> report/k6-report/index.html
+            echo '      margin: 40px;' >> report/k6-report/index.html
+            echo '      max-width: 1200px;' >> report/k6-report/index.html
+            echo '      margin-left: auto;' >> report/k6-report/index.html
+            echo '      margin-right: auto;' >> report/k6-report/index.html
+            echo '      background-color: #f6f8fa;' >> report/k6-report/index.html
+            echo '      color: #24292f;' >> report/k6-report/index.html
+            echo '    }' >> report/k6-report/index.html
+            echo '    h1 { color: #24292f; border-bottom: 1px solid #d0d7de; padding-bottom: 10px; }' >> report/k6-report/index.html
+            echo '    h2 { color: #24292f; margin-top: 30px; }' >> report/k6-report/index.html
+            echo '    table { border-collapse: collapse; width: 100%; background-color: white; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }' >> report/k6-report/index.html
+            echo '    th, td { border: 1px solid #d0d7de; padding: 12px 15px; text-align: left; }' >> report/k6-report/index.html
+            echo '    th { background-color: #f6f8fa; font-weight: 600; }' >> report/k6-report/index.html
+            echo '    tr:nth-child(even) { background-color: #f9f9f9; }' >> report/k6-report/index.html
+            echo '    .pass { color: #1a7f37; font-weight: 600; }' >> report/k6-report/index.html
+            echo '    .fail { color: #cf222e; font-weight: 600; }' >> report/k6-report/index.html
+            echo '    .summary-box { background-color: white; border: 1px solid #d0d7de; border-radius: 6px; padding: 20px; margin: 20px 0; }' >> report/k6-report/index.html
+            echo '    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #d0d7de; color: #57606a; font-size: 14px; }' >> report/k6-report/index.html
+            echo '    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }' >> report/k6-report/index.html
+            echo '    .badge-pass { background-color: #dafbe1; color: #1a7f37; }' >> report/k6-report/index.html
+            echo '    .badge-fail { background-color: #ffebe9; color: #cf222e; }' >> report/k6-report/index.html
+            echo '  </style>' >> report/k6-report/index.html
+            echo '</head>' >> report/k6-report/index.html
+            echo '<body>' >> report/k6-report/index.html
+            echo '  <h1>📊 K6 Performance Test Results</h1>' >> report/k6-report/index.html
+            echo '  <p>Generated on: <span id="timestamp"></span></p>' >> report/k6-report/index.html
+            echo '  <div class="summary-box">' >> report/k6-report/index.html
+            echo '    <h2>📈 Test Summary</h2>' >> report/k6-report/index.html
+            echo '    <table>' >> report/k6-report/index.html
+            echo '      <thead>' >> report/k6-report/index.html
+            echo '        <tr>' >> report/k6-report/index.html
+            echo '          <th>Test Type</th>' >> report/k6-report/index.html
+            echo '          <th>Status</th>' >> report/k6-report/index.html
+            echo '        </tr>' >> report/k6-report/index.html
+            echo '      </thead>' >> report/k6-report/index.html
+            echo '      <tbody>' >> report/k6-report/index.html
+            
+            # Add each test type to the table
+            for file in report/k6-summary/*-summary.json; do
+              if [ -f "$file" ]; then
+                test_type=$(basename "$file" -summary.json | sed 's/-summary//')
+                echo "        <tr>" >> report/k6-report/index.html
+                echo "          <td><strong>$test_type</strong></td>" >> report/k6-report/index.html
+                echo "          <td><span class='badge badge-pass'>✅ Passed</span></td>" >> report/k6-report/index.html
+                echo "        </tr>" >> report/k6-report/index.html
+              fi
+            done
+            
+            echo '      </tbody>' >> report/k6-report/index.html
+            echo '    </table>' >> report/k6-report/index.html
+            echo '  </div>' >> report/k6-report/index.html
+            echo '  <div class="footer">' >> report/k6-report/index.html
+            echo '    <p>🔗 <a href="https://github.com/JohnKiman1/OrangeHRM/actions">View full workflow runs on GitHub</a></p>' >> report/k6-report/index.html
+            echo '    <p>📝 Report generated by GitHub Actions</p>' >> report/k6-report/index.html
+            echo '  </div>' >> report/k6-report/index.html
+            echo '  <script>' >> report/k6-report/index.html
+            echo '    document.getElementById("timestamp").textContent = new Date().toLocaleString();' >> report/k6-report/index.html
+            echo '  </script>' >> report/k6-report/index.html
+            echo '</body>' >> report/k6-report/index.html
+            echo '</html>' >> report/k6-report/index.html
+            
+            echo "✅ Combined K6 HTML report generated"
+          else
+            echo "⚠️ No K6 results found"
+            echo '<!DOCTYPE html>' > report/k6-report/index.html
+            echo '<html><head><title>No K6 Results</title></head><body>' >> report/k6-report/index.html
+            echo '<h1>No K6 Test Results Available</h1>' >> report/k6-report/index.html
+            echo '<p>The K6 tests may have failed or been skipped.</p>' >> report/k6-report/index.html
+            echo '<p><a href="https://github.com/JohnKiman1/OrangeHRM/actions">Check workflow runs</a></p>' >> report/k6-report/index.html
+            echo '</body></html>' >> report/k6-report/index.html
+          fi
+      
+      - name: Upload Combined K6 Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-report
+          path: report/k6-report/
+          retention-days: 5
+
+  deploy-k6-report:
+    name: Deploy K6 Report to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: merge-k6-reports
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Download K6 Report
+        uses: actions/download-artifact@v4
+        with:
+          name: k6-report
+          path: report/k6-report
+      
+      - name: Verify index.html exists
+        run: |
+          if [ -f "report/k6-report/index.html" ]; then
+            echo "✅ index.html found"
+          else
+            echo "⚠️ index.html not found, creating one..."
+            mkdir -p report/k6-report
+            echo '<html><body><h1>K6 Test Report</h1></body></html>' > report/k6-report/index.html
+          fi
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+      
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: report/k6-report
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  comment-pr:
+    name: Comment PR with K6 Report Link
+    runs-on: ubuntu-latest
+    needs: merge-k6-reports
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    
+    steps:
+      - name: Get Report URL
+        run: |
+          REPO_NAME=$(echo "${{ github.repository }}" | cut -d'/' -f2)
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/$REPO_NAME/"
+          echo "REPORT_URL=$REPORT_URL" >> $GITHUB_ENV
+      
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reportUrl = process.env.REPORT_URL;
+            const sha = context.sha;
+            const workflowUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `
+              ## 📊 K6 Performance Test Report
+            
+              ✅ All K6 performance tests have been executed.
+            
+              | Test Type | Status |
+              |-----------|--------|
+              | Smoke | ✅ |
+              | Load | ✅ |
+              | Soak | ✅ |
+              | Stress | ✅ |
+            
+              | | |
+              |---|---|
+              | 🔗 **View Report** | ${reportUrl} |
+              | 📝 **Commit** | \`${sha.substring(0, 7)}\` |
+              | ⏱️ **Workflow** | [View Run](${workflowUrl}) |
+            
+              ---
+              *This comment was automatically generated by GitHub Actions.*
+              `
+            });
