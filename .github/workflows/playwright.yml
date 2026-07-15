@@ -153,7 +153,7 @@ jobs:
           mkdir -p _site/playwright
           cp -r allure-report/* _site/playwright/
           
-          # Create root index.html
+          # Create root index.html with correct links
           echo '<!DOCTYPE html>' > _site/index.html
           echo '<html lang="en">' >> _site/index.html
           echo '<head>' >> _site/index.html
@@ -193,11 +193,11 @@ jobs:
           echo '  <h1>📊 Test Reports</h1>' >> _site/index.html
           echo '  <ul class="report-list">' >> _site/index.html
           echo '    <li>' >> _site/index.html
-          echo '      <a href="/playwright/">🧪 Playwright Test Report</a>' >> _site/index.html
+          echo '      <a href="/OrangeHRM/playwright/">🧪 Playwright Test Report</a>' >> _site/index.html
           echo '      <p>End-to-end test results from Playwright</p>' >> _site/index.html
           echo '    </li>' >> _site/index.html
           echo '    <li>' >> _site/index.html
-          echo '      <a href="/k6/">⚡ K6 Performance Report</a>' >> _site/index.html
+          echo '      <a href="/OrangeHRM/k6/">⚡ K6 Performance Report</a>' >> _site/index.html
           echo '      <p>Performance test results from K6</p>' >> _site/index.html
           echo '    </li>' >> _site/index.html
           echo '  </ul>' >> _site/index.html

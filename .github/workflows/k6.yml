@@ -232,7 +232,6 @@ jobs:
         run: |
           if [ -f "report/k6-report/index.html" ]; then
             echo "✅ index.html found"
-            cat report/k6-report/index.html | head -20
           else
             echo "⚠️ index.html not found"
             mkdir -p report/k6-report
@@ -241,11 +240,10 @@ jobs:
       
       - name: Prepare deployment with index
         run: |
-          # Create _site directory with the report
           mkdir -p _site/k6
           cp -r report/k6-report/* _site/k6/
           
-          # Create root index.html with links to all reports
+          # Create root index.html with correct links
           echo '<!DOCTYPE html>' > _site/index.html
           echo '<html lang="en">' >> _site/index.html
           echo '<head>' >> _site/index.html
@@ -285,11 +283,11 @@ jobs:
           echo '  <h1>📊 Test Reports</h1>' >> _site/index.html
           echo '  <ul class="report-list">' >> _site/index.html
           echo '    <li>' >> _site/index.html
-          echo '      <a href="/playwright/">🧪 Playwright Test Report</a>' >> _site/index.html
+          echo '      <a href="/OrangeHRM/playwright/">🧪 Playwright Test Report</a>' >> _site/index.html
           echo '      <p>End-to-end test results from Playwright</p>' >> _site/index.html
           echo '    </li>' >> _site/index.html
           echo '    <li>' >> _site/index.html
-          echo '      <a href="/k6/">⚡ K6 Performance Report</a>' >> _site/index.html
+          echo '      <a href="/OrangeHRM/k6/">⚡ K6 Performance Report</a>' >> _site/index.html
           echo '      <p>Performance test results from K6</p>' >> _site/index.html
           echo '    </li>' >> _site/index.html
           echo '  </ul>' >> _site/index.html
@@ -298,12 +296,6 @@ jobs:
           echo '  </p>' >> _site/index.html
           echo '</body>' >> _site/index.html
           echo '</html>' >> _site/index.html
-          
-          # Verify the _site directory structure
-          echo "📁 _site contents:"
-          ls -la _site/
-          echo "📁 _site/k6 contents:"
-          ls -la _site/k6/ || echo "k6 directory is empty or doesn't exist"
       
       - name: Setup Pages
         uses: actions/configure-pages@v5
