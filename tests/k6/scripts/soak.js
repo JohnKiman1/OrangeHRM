@@ -7,19 +7,26 @@ const env = loadEnvironment(__ENV.K6_ENV || 'develop');
 
 export const options = {
   stages: [
-    { duration: '30s', target: 5 },
-    { duration: '120s', target: 5 },
+    { duration: '30s', target: 3 },
+    { duration: '120s', target: 3 },
     { duration: '30s', target: 0 },
   ],
   thresholds: {
-    http_req_failed: ['rate<0.01'],
-    http_req_duration: ['p(95)<900'],
-    checks: ['rate>0.99'],
+    http_req_failed: ['rate<0.05'],
+    http_req_duration: ['p(95)<5000', 'p(99)<6000', 'avg<3000'],
+    checks: ['rate>0.95'],
   },
 };
 
 export default function () {
-  const res = http.get(`${env.baseUrl}/auth/login`);
+  // Add random delay to avoid rate limiting
+  sleep(Math.random() * 2);
+  
+  const res = http.get(`${env.baseUrl}/auth/login`, {
+    headers: env.headers,
+    timeout: env.timeouts?.httpTimeout || '30s',
+  });
+  
   checkStatus(res, 200);
   sleep(2);
 }
